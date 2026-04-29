@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Sign In — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.auth-page { min-height: calc(100vh - 140px); display: flex; align-items: center; justify-content: center; padding: 20px 0; }
+.auth-card { width: 100%; max-width: 440px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+.auth-top { background: var(--navy); padding: 36px 36px 28px; text-align: center; }
+.auth-logo-icon { font-size: 2.4rem; color: var(--accent); display: block; margin-bottom: 12px; }
+.auth-top h1 { font-size: 1.55rem; color: #fff; margin-bottom: 6px; }
+.auth-top p { color: rgba(255,255,255,0.55); font-size: 0.88rem; }
+.auth-body { padding: 32px 36px; }
+.auth-form-group { margin-bottom: 18px; }
+.auth-label { display: block; margin-bottom: 6px; font-size: 0.83rem; font-weight: 600; color: var(--navy); }
+.auth-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--r-sm); font-family: inherit; font-size: 0.9rem; color: var(--text); outline: none; transition: border-color var(--transition), box-shadow var(--transition); background: #fff; }
+.auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240,90,40,0.1); }
+.auth-input::placeholder { color: #b0bac6; }
+.auth-footer { text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--muted); }
+.auth-footer a { color: var(--accent); font-weight: 600; }
+.errorlist { list-style: none; margin: 5px 0 0; }
+.errorlist li { font-size: 0.78rem; color: var(--red); display: flex; align-items: center; gap: 4px; }
+.errorlist li::before { content: "⚠"; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-top">
+      <i class="bi bi-briefcase-fill auth-logo-icon"></i>
+      <h1>Welcome back</h1>
+      <p>Sign in to continue to JobBoard</p>
+    </div>
+    <div class="auth-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="auth-form-group">
+          <label class="auth-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          <input class="auth-input" type="{{ field.field.widget.input_type }}"
+                 name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                 {% if field.value %}value="{{ field.value }}"{% endif %}
+                 placeholder="Enter your {{ field.label|lower }}"
+                 autocomplete="{{ field.html_name }}">
+          {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        {% endfor %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-error" style="margin-bottom:16px;">
+          <i class="bi bi-exclamation-circle-fill alert-icon"></i>
+          <span>{{ form.non_field_errors|join:" " }}</span>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:6px;">
+          <i class="bi bi-box-arrow-in-right"></i> Sign In
+        </button>
+      </form>
+      <div class="auth-footer">
+        Don't have an account? <a href="{% url 'register' %}">Create one free</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

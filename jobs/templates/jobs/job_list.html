@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Browse Jobs — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.list-layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+@media(max-width:860px){ .list-layout { grid-template-columns: 1fr; } .filter-sidebar { display: none; } }
+.filter-sidebar { background: #fff; border-radius: var(--r); border: 1px solid var(--border); overflow: hidden; position: sticky; top: 86px; }
+.filter-header { padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--light); display: flex; align-items: center; gap: 7px; font-size: 0.87rem; font-weight: 700; color: var(--navy); }
+.filter-section { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.filter-section:last-child { border-bottom: none; }
+.filter-label { font-size: 0.77rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; }
+.filter-input { width: 100%; padding: 8px 11px; border: 1.5px solid var(--border); border-radius: var(--r-sm); font-family: inherit; font-size: 0.87rem; outline: none; color: var(--text); }
+.filter-input:focus { border-color: var(--accent); }
+.filter-option { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; font-size: 0.875rem; color: var(--text); transition: color var(--transition); }
+.filter-option:hover { color: var(--accent); }
+.filter-option input[type="radio"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.search-bar-top { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.results-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.results-count { font-size: 0.87rem; color: var(--muted); }
+.results-count strong { color: var(--navy); }
+.jobs-list { display: flex; flex-direction: column; gap: 12px; }
+.job-row { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; display: flex; gap: 14px; transition: all var(--transition); align-items: flex-start; }
+.job-row:hover { transform: translateX(3px); box-shadow: var(--shadow-md); border-color: rgba(240,90,40,0.3); }
+.jr-logo { width: 48px; height: 48px; border-radius: 10px; background: var(--navy); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; flex-shrink: 0; }
+.jr-body { flex: 1; min-width: 0; }
+.jr-title { font-size: 1rem; font-weight: 700; color: var(--navy); display: block; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jr-title:hover { color: var(--accent); }
+.jr-company { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+.jr-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+.jr-meta-item { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.jr-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.jr-date { font-size: 0.75rem; color: var(--muted); }
+/* Pagination */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 32px; flex-wrap: wrap; }
+.page-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--r-sm); border: 1.5px solid var(--border); background: #fff; color: var(--text); font-size: 0.87rem; font-weight: 600; transition: all var(--transition); text-decoration: none; }
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.page-btn.disabled { opacity: 0.4; pointer-events: none; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Browse Jobs</h1>
+    <p class="page-sub">Find the perfect opportunity that matches your skills</p>
+  </div>
+  {% if user.is_authenticated and is_employer %}
+  <a href="{% url 'job_create' %}" class="btn btn-success"><i class="bi bi-plus-circle"></i> Post a Job</a>
+  {% endif %}
+</div>
+
+<!-- Search bar (mobile-friendly) -->
+<form method="get" action="{% url 'job_list' %}" id="filterForm">
+  <div class="search-bar-top">
+    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Job title, skill, company…" style="flex:2;min-width:160px;">
+    <input type="text" name="location" value="{{ location }}" class="form-control" placeholder="Location or Remote…" style="flex:1;min-width:130px;">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Search</button>
+    {% if query or location or selected_type or selected_category %}
+    <a href="{% url 'job_list' %}" class="btn btn-ghost"><i class="bi bi-x-circle"></i> Clear</a>
+    {% endif %}
+  </div>
+
+  <div class="list-layout">
+    <!-- Sidebar Filters -->
+    <aside class="filter-sidebar">
+      <div class="filter-header"><i class="bi bi-funnel"></i> Filter Results</div>
+      <div class="filter-section">
+        <div class="filter-label">Job Type</div>
+        <label class="filter-option">
+          <input type="radio" name="job_type" value="" {% if not selected_type %}checked{% endif %} onchange="this.form.submit()"> All Types
+        </label>
+        {% for val, label in job_type_choices %}
+        <label class="filter-option">
+          <input type="radio" name="job_type" value="{{ val }}" {% if selected_type == val %}checked{% endif %} onchange="this.form.submit()"> {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+      {% if categories %}
+      <div class="filter-section">
+        <div class="filter-label">Category</div>
+        <label class="filter-option">
+          <input type="radio" name="category" value="" {% if not selected_category %}checked{% endif %} onchange="this.form.submit()"> All Categories
+        </label>
+        {% for cat in categories %}
+        <label class="filter-option">
+          <input type="radio" name="category" value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}checked{% endif %} onchange="this.form.submit()"> {{ cat.name }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <!-- Keep hidden fields -->
+      <input type="hidden" name="q" value="{{ query }}">
+      <input type="hidden" name="location" value="{{ location }}">
+    </aside>
+
+    <!-- Job Results -->
+    <div>
+      <div class="results-header">
+        <span class="results-count"><strong>{{ total_results }}</strong> job{{ total_results|pluralize }} found{% if query %} for "{{ query }}"{% endif %}</span>
+      </div>
+
+      {% if jobs %}
+      <div class="jobs-list">
+        {% for job in jobs %}
+        <div class="job-row">
+          <div class="jr-logo">{{ job.company_name|first|upper }}</div>
+          <div class="jr-body">
+            <a href="{% url 'job_detail' job.pk %}" class="jr-title">{{ job.title }}</a>
+            <div class="jr-company"><i class="bi bi-building" style="margin-right:3px;"></i>{{ job.company_name }}</div>
+            <div class="jr-meta">
+              <span class="jr-meta-item"><i class="bi bi-geo-alt"></i>{{ job.location }}</span>
+              <span class="badge badge-orange">{{ job.job_type }}</span>
+              {% if job.salary %}<span class="jr-meta-item"><i class="bi bi-cash"></i>₹{{ job.salary|floatformat:0 }}/yr</span>{% endif %}
+              <span class="jr-meta-item"><i class="bi bi-bar-chart"></i>{{ job.experience }}+ yrs</span>
+              {% if job.category %}<span class="badge badge-navy">{{ job.category.name }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="jr-actions">
+            <span class="jr-date">{{ job.created_at|timesince }} ago</span>
+            {% if user.is_authenticated and is_job_seeker %}
+              <a href="{% url 'apply_job' job.pk %}" class="btn btn-success btn-sm"><i class="bi bi-send"></i> Apply</a>
+            {% else %}
+              <a href="{% url 'job_detail' job.pk %}" class="btn btn-ghost btn-sm">View</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+      <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a class="page-btn" href="?{% if query %}q={{ query }}&{% endif %}{% if location %}location={{ location }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>
+        {% else %}
+        <span class="page-btn disabled"><i class="bi bi-chevron-left"></i></span>
+        {% endif %}
+        {% for i in page_obj.paginator.page_range %}
+          {% if page_obj.number == i %}
+          <span class="page-btn active">{{ i }}</span>
+          {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+          <a class="page-btn" href="?{% if query %}q={{ query }}&{% endif %}{% if location %}location={{ location }}&{% endif %}page={{ i }}">{{ i }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a class="page-btn" href="?{% if query %}q={{ query }}&{% endif %}{% if location %}location={{ location }}&{% endif %}page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a>
+        {% else %}
+        <span class="page-btn disabled"><i class="bi bi-chevron-right"></i></span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="card">
+        <div class="card-body">
+          <div class="empty-state">
+            <i class="bi bi-briefcase empty-icon"></i>
+            <h3>No jobs found</h3>
+            <p>Try different search terms or clear the filters to see all listings.</p>
+            <a href="{% url 'job_list' %}" class="btn btn-primary" style="margin-top:16px;"><i class="bi bi-arrow-counterclockwise"></i> Reset Filters</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}

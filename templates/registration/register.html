@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Create Account — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.auth-page { min-height: calc(100vh - 140px); display: flex; align-items: center; justify-content: center; padding: 24px 0; }
+.auth-card { width: 100%; max-width: 500px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+.auth-top { background: var(--navy); padding: 32px 36px 26px; text-align: center; }
+.auth-logo-icon { font-size: 2.2rem; color: var(--accent); display: block; margin-bottom: 10px; }
+.auth-top h1 { font-size: 1.5rem; color: #fff; margin-bottom: 5px; }
+.auth-top p { color: rgba(255,255,255,0.55); font-size: 0.87rem; }
+.auth-body { padding: 28px 36px 32px; }
+.auth-form-group { margin-bottom: 16px; }
+.auth-label { display: block; margin-bottom: 6px; font-size: 0.82rem; font-weight: 600; color: var(--navy); }
+.auth-input { width: 100%; padding: 10px 13px; border: 1.5px solid var(--border); border-radius: var(--r-sm); font-family: inherit; font-size: 0.9rem; color: var(--text); outline: none; transition: border-color var(--transition), box-shadow var(--transition); background: #fff; }
+.auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240,90,40,0.1); }
+.auth-input::placeholder { color: #b0bac6; }
+.role-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.role-option { position: relative; }
+.role-option input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.role-option label { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 12px; border: 2px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all var(--transition); text-align: center; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.role-option label i { font-size: 1.6rem; color: var(--muted); transition: color var(--transition); }
+.role-option input:checked + label { border-color: var(--accent); background: rgba(240,90,40,0.05); color: var(--accent); }
+.role-option input:checked + label i { color: var(--accent); }
+.role-option label:hover { border-color: var(--accent); }
+.auth-footer { text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--muted); }
+.auth-footer a { color: var(--accent); font-weight: 600; }
+.errorlist { list-style: none; margin: 5px 0 0; }
+.errorlist li { font-size: 0.78rem; color: var(--red); }
+.errorlist li::before { content: "⚠ "; }
+.helptext { font-size: 0.76rem; color: var(--muted); margin-top: 3px; display: block; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-top">
+      <i class="bi bi-person-plus auth-logo-icon"></i>
+      <h1>Create your account</h1>
+      <p>Join thousands of professionals on JobBoard</p>
+    </div>
+    <div class="auth-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Role selector rendered first and nicely -->
+        <div class="auth-form-group">
+          <label class="auth-label">I am a <span style="color:var(--accent);">*</span></label>
+          <div class="role-selector">
+            <div class="role-option">
+              <input type="radio" name="role" id="role_seeker" value="job_seeker"
+                {% if form.role.value == 'job_seeker' or not form.role.value %}checked{% endif %}>
+              <label for="role_seeker">
+                <i class="bi bi-person-badge"></i>
+                Job Seeker
+                <span style="font-size:0.72rem;font-weight:400;color:var(--muted);">Looking for work</span>
+              </label>
+            </div>
+            <div class="role-option">
+              <input type="radio" name="role" id="role_employer" value="employer"
+                {% if form.role.value == 'employer' %}checked{% endif %}>
+              <label for="role_employer">
+                <i class="bi bi-building"></i>
+                Employer
+                <span style="font-size:0.72rem;font-weight:400;color:var(--muted);">Hiring talent</span>
+              </label>
+            </div>
+          </div>
+          {% if form.role.errors %}<ul class="errorlist">{% for e in form.role.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+
+        <!-- Username -->
+        <div class="auth-form-group">
+          <label class="auth-label" for="{{ form.username.id_for_label }}">Username <span style="color:var(--accent);">*</span></label>
+          <input class="auth-input" type="text" name="username" id="{{ form.username.id_for_label }}"
+                 value="{{ form.username.value|default:'' }}" placeholder="Choose a username" autocomplete="username">
+          {% if form.username.errors %}<ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+
+        <!-- Email -->
+        <div class="auth-form-group">
+          <label class="auth-label" for="{{ form.email.id_for_label }}">Email <span style="color:var(--accent);">*</span></label>
+          <input class="auth-input" type="email" name="email" id="{{ form.email.id_for_label }}"
+                 value="{{ form.email.value|default:'' }}" placeholder="your@email.com" autocomplete="email">
+          {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="auth-form-group">
+          <label class="auth-label" for="{{ form.password.id_for_label }}">Password <span style="color:var(--accent);">*</span></label>
+          <div style="position:relative;">
+            <input class="auth-input" type="password" name="password" id="{{ form.password.id_for_label }}"
+                   placeholder="Minimum 8 characters" autocomplete="new-password" style="padding-right:42px;">
+            <button type="button" onclick="togglePw('{{ form.password.id_for_label }}', this)"
+                    style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:0;">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          {% if form.password.errors %}<ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          <span class="helptext">{{ form.password.help_text }}</span>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="auth-form-group">
+          <label class="auth-label" for="{{ form.confirm_password.id_for_label }}">Confirm Password <span style="color:var(--accent);">*</span></label>
+          <input class="auth-input" type="password" name="confirm_password" id="{{ form.confirm_password.id_for_label }}"
+                 placeholder="Re-enter your password" autocomplete="new-password">
+          {% if form.confirm_password.errors %}<ul class="errorlist">{% for e in form.confirm_password.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-error" style="margin-bottom:14px;">
+          <i class="bi bi-x-circle-fill alert-icon"></i>
+          <span>{{ form.non_field_errors|join:" " }}</span>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:4px;">
+          <i class="bi bi-person-check"></i> Create Account
+        </button>
+      </form>
+      <div class="auth-footer">
+        Already have an account? <a href="{% url 'login' %}">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.querySelector('i').className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+</script>
+{% endblock %}

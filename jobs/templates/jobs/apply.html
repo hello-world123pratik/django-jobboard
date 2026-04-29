@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Apply — {{ job.title }}{% endblock %}
+{% block extra_head %}
+<style>
+.apply-wrap { max-width: 680px; margin: 0 auto; }
+.job-summary { background: var(--navy); border-radius: var(--r); padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; }
+.js-logo { width: 52px; height: 52px; border-radius: 11px; background: rgba(255,255,255,0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; flex-shrink: 0; }
+.js-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.js-meta { color: rgba(255,255,255,0.55); font-size: 0.85rem; }
+.upload-zone { border: 2px dashed var(--border); border-radius: var(--r); padding: 30px; text-align: center; cursor: pointer; transition: all var(--transition); background: var(--light); }
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(240,90,40,0.04); }
+.upload-zone input[type="file"] { display: none; }
+.upload-icon { font-size: 2rem; color: var(--accent); display: block; margin-bottom: 10px; }
+.upload-text { font-size: 0.88rem; color: var(--muted); }
+.upload-text strong { color: var(--accent); cursor: pointer; }
+.char-count { font-size: 0.76rem; color: var(--muted); text-align: right; margin-top: 4px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="apply-wrap">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Submit Application</h1>
+      <p class="page-sub">Complete your application for this role</p>
+    </div>
+    <a href="{% url 'job_detail' job.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+
+  <div class="job-summary">
+    <div class="js-logo">{{ job.company_name|first|upper }}</div>
+    <div>
+      <div class="js-title">{{ job.title }}</div>
+      <div class="js-meta">
+        <i class="bi bi-building" style="margin-right:4px;"></i>{{ job.company_name }}
+        &nbsp;·&nbsp;<i class="bi bi-geo-alt" style="margin-right:4px;"></i>{{ job.location }}
+        &nbsp;·&nbsp;<i class="bi bi-briefcase" style="margin-right:4px;"></i>{{ job.job_type }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title"><i class="bi bi-send"></i> Your Application</span>
+    </div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" id="applyForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label class="form-label">Resume / CV <span class="req">*</span></label>
+          <label class="upload-zone" id="uploadZone">
+            <input type="file" name="resume" id="resumeInput" accept=".pdf,.doc,.docx" onchange="handleFile(this)">
+            <i class="bi bi-file-earmark-arrow-up upload-icon" id="uploadIcon"></i>
+            <div class="upload-text">
+              <strong>Click to upload</strong> or drag & drop<br>
+              PDF, DOC, DOCX (max 5MB)
+            </div>
+            <div id="fileName" style="display:none;margin-top:8px;font-size:0.85rem;font-weight:600;color:var(--teal);"></div>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cover_letter">Cover Letter <span class="req">*</span></label>
+          <textarea name="cover_letter" id="cover_letter" class="form-control" rows="8" required
+                    oninput="updateCount(this)"
+                    placeholder="Dear Hiring Manager,&#10;&#10;I am excited to apply for the {{ job.title }} position at {{ job.company_name }}. My experience in [your skills] makes me a strong candidate because…&#10;&#10;I look forward to discussing this opportunity further."></textarea>
+          <div class="char-count"><span id="charCount">0</span> characters</div>
+        </div>
+
+        <div style="background:var(--light);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:20px;font-size:0.84rem;color:var(--muted);display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);">
+          <i class="bi bi-lightbulb" style="color:var(--accent);flex-shrink:0;margin-top:2px;"></i>
+          <span><strong style="color:var(--navy);">Tip:</strong> A great cover letter explains why you're a strong fit. Mention specific skills and experiences relevant to this role.</span>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);">
+          <a href="{% url 'job_detail' job.pk %}" class="btn btn-ghost"><i class="bi bi-x"></i> Cancel</a>
+          <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-send-fill"></i> Submit Application
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function handleFile(input) {
+  const zone = document.getElementById('uploadZone');
+  const name = document.getElementById('fileName');
+  const icon = document.getElementById('uploadIcon');
+  if (input.files && input.files[0]) {
+    const f = input.files[0];
+    if (f.size > 5 * 1024 * 1024) { alert('File too large. Max 5MB.'); input.value = ''; return; }
+    name.textContent = '✓ ' + f.name;
+    name.style.display = 'block';
+    zone.style.borderColor = 'var(--teal)';
+    zone.style.background = 'rgba(0,176,155,0.05)';
+    icon.className = 'bi bi-file-earmark-check upload-icon';
+    icon.style.color = 'var(--teal)';
+  }
+}
+function updateCount(el) {
+  document.getElementById('charCount').textContent = el.value.length;
+}
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  const input = document.getElementById('resumeInput');
+  const dt = new DataTransfer();
+  dt.items.add(e.dataTransfer.files[0]);
+  input.files = dt.files;
+  handleFile(input);
+});
+</script>
+{% endblock %}

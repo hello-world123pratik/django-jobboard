@@ -1,0 +1,284 @@
+{% extends "admin_panel/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+@media(max-width:900px){ .grid-2,.grid-3 { grid-template-columns: 1fr; } }
+.activity-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.ad-orange { background: var(--accent); }
+.ad-teal { background: var(--teal); }
+.ad-blue { background: var(--sky); }
+.activity-text { font-size: 0.83rem; color: var(--text); line-height: 1.5; }
+.activity-time { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+.top-job { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.top-job:last-child { border-bottom: none; }
+.tj-rank { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 800; color: var(--muted); width: 20px; flex-shrink: 0; }
+.tj-logo { width: 32px; height: 32px; border-radius: 7px; background: var(--navy); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.78rem; flex-shrink: 0; }
+.tj-name { font-size: 0.83rem; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tj-co { font-size: 0.72rem; color: var(--muted); }
+.tj-count { margin-left: auto; font-size: 0.78rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.quick-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 18px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--r); text-decoration: none; color: var(--text); transition: all var(--ease); text-align: center; }
+.quick-action:hover { border-color: var(--accent); background: rgba(240,90,40,0.04); transform: translateY(-2px); }
+.qa-icon { font-size: 1.6rem; }
+.qa-label { font-size: 0.78rem; font-weight: 600; }
+.quick-actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media(max-width:640px){ .quick-actions-grid { grid-template-columns: repeat(2,1fr); } }
+.status-dist { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.sd-row { display: flex; align-items: center; gap: 10px; }
+.sd-label { font-size: 0.78rem; color: var(--muted); width: 80px; flex-shrink: 0; }
+.sd-bar-wrap { flex: 1; background: var(--border); border-radius: 20px; height: 7px; overflow: hidden; }
+.sd-bar { height: 100%; border-radius: 20px; }
+.sd-count { font-size: 0.78rem; font-weight: 700; color: var(--navy); width: 28px; text-align: right; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon si-blue"><i class="bi bi-briefcase-fill"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_jobs }}</div>
+      <div class="stat-label">Total Jobs</div>
+      <div class="stat-delta delta-up"><i class="bi bi-arrow-up"></i> {{ approved_jobs }} live</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-orange"><i class="bi bi-hourglass-split"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ pending_jobs }}</div>
+      <div class="stat-label">Pending Approval</div>
+      <div class="stat-delta {% if pending_jobs > 0 %}delta-down{% else %}delta-up{% endif %}">
+        <i class="bi bi-{% if pending_jobs > 0 %}exclamation-triangle{% else %}check-circle{% endif %}"></i>
+        {% if pending_jobs > 0 %}Needs review{% else %}All clear{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-teal"><i class="bi bi-send-fill"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_applications }}</div>
+      <div class="stat-label">Applications</div>
+      <div class="stat-delta delta-up"><i class="bi bi-arrow-up"></i> {{ new_applications }} this week</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-purple"><i class="bi bi-people-fill"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_users }}</div>
+      <div class="stat-label">Registered Users</div>
+      <div class="stat-delta delta-up"><i class="bi bi-arrow-up"></i> {{ new_users }} this week</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-green"><i class="bi bi-building"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_employers }}</div>
+      <div class="stat-label">Employers</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-orange"><i class="bi bi-person-badge"></i></div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_seekers }}</div>
+      <div class="stat-label">Job Seekers</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card" style="margin-bottom:18px;">
+  <div class="card-head">
+    <span class="card-head-title"><i class="bi bi-lightning-charge"></i> Quick Actions</span>
+  </div>
+  <div class="card-body" style="padding:16px;">
+    <div class="quick-actions-grid">
+      <a href="{% url 'admin_jobs' %}?filter=pending" class="quick-action">
+        <span class="qa-icon" style="color:var(--yellow);"><i class="bi bi-hourglass-split"></i></span>
+        <span class="qa-label">Review Pending</span>
+        {% if pending_jobs %}<span class="badge badge-yellow">{{ pending_jobs }}</span>{% endif %}
+      </a>
+      <a href="{% url 'admin_jobs' %}" class="quick-action">
+        <span class="qa-icon" style="color:var(--sky);"><i class="bi bi-briefcase"></i></span>
+        <span class="qa-label">Manage Jobs</span>
+      </a>
+      <a href="{% url 'admin_users' %}" class="quick-action">
+        <span class="qa-icon" style="color:var(--purple);"><i class="bi bi-people"></i></span>
+        <span class="qa-label">Manage Users</span>
+      </a>
+      <a href="{% url 'admin_categories' %}" class="quick-action">
+        <span class="qa-icon" style="color:var(--teal);"><i class="bi bi-tags"></i></span>
+        <span class="qa-label">Categories</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid-2" style="margin-bottom:18px;">
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-title"><i class="bi bi-bar-chart"></i> Jobs by Type</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="jobTypeChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-title"><i class="bi bi-pie-chart"></i> Application Status</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="appStatusChart"></canvas></div>
+      <div class="status-dist" style="margin-top:12px;">
+        {% for s in app_status_data %}
+        <div class="sd-row">
+          <span class="sd-label">{{ s.label }}</span>
+          <div class="sd-bar-wrap"><div class="sd-bar" style="width:{{ s.pct }}%;background:{{ s.color }};"></div></div>
+          <span class="sd-count">{{ s.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="grid-3">
+  <!-- Top Jobs -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-title"><i class="bi bi-trophy"></i> Most Applied Jobs</span>
+      <a href="{% url 'admin_jobs' %}" class="btn btn-ghost btn-xs">View All</a>
+    </div>
+    <div class="card-body" style="padding:12px 16px;">
+      {% for job in top_jobs %}
+      <div class="top-job">
+        <span class="tj-rank">#{{ forloop.counter }}</span>
+        <div class="tj-logo">{{ job.company_name|first|upper }}</div>
+        <div style="min-width:0;">
+          <div class="tj-name">{{ job.title }}</div>
+          <div class="tj-co">{{ job.company_name }}</div>
+        </div>
+        <span class="tj-count">{{ job.app_count }} apps</span>
+      </div>
+      {% empty %}
+      <div class="empty-state" style="padding:24px 0;">
+        <i class="bi bi-briefcase empty-icon" style="font-size:1.8rem;"></i>
+        <p>No data yet</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recent Applications -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-title"><i class="bi bi-inbox"></i> Recent Applications</span>
+      <a href="{% url 'admin_applications' %}" class="btn btn-ghost btn-xs">View All</a>
+    </div>
+    <div class="card-body" style="padding:12px 16px;">
+      {% for app in recent_apps %}
+      <div class="activity-item">
+        <div class="avatar-sm" style="flex-shrink:0;width:28px;height:28px;font-size:0.72rem;">{{ app.user.username|first|upper }}</div>
+        <div style="min-width:0;">
+          <div class="activity-text fw-600" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.user.username }}</div>
+          <div class="activity-text text-muted text-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">applied for {{ app.job.title }}</div>
+          <div class="activity-time">{{ app.created_at|timesince }} ago</div>
+        </div>
+        <span class="badge {% if app.status == 'shortlisted' %}badge-green{% elif app.status == 'rejected' %}badge-red{% elif app.status == 'reviewed' %}badge-blue{% else %}badge-yellow{% endif %}" style="flex-shrink:0;">{{ app.get_status_display }}</span>
+      </div>
+      {% empty %}
+      <div class="empty-state" style="padding:24px 0;">
+        <i class="bi bi-inbox empty-icon" style="font-size:1.8rem;"></i>
+        <p>No applications yet</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- New Users -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-title"><i class="bi bi-person-plus"></i> New Users</span>
+      <a href="{% url 'admin_users' %}" class="btn btn-ghost btn-xs">View All</a>
+    </div>
+    <div class="card-body" style="padding:12px 16px;">
+      {% for u in recent_users %}
+      <div class="activity-item">
+        <div class="avatar-sm" style="flex-shrink:0;width:28px;height:28px;font-size:0.72rem;">{{ u.username|first|upper }}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="activity-text fw-600">{{ u.username }}</div>
+          <div class="activity-text text-muted text-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.email }}</div>
+          <div class="activity-time">{{ u.date_joined|timesince }} ago</div>
+        </div>
+        {% if u.profile %}
+        <span class="badge {% if u.profile.role == 'employer' %}badge-blue{% else %}badge-green{% endif %}" style="flex-shrink:0;">{{ u.profile.get_role_display }}</span>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="empty-state" style="padding:24px 0;">
+        <i class="bi bi-people empty-icon" style="font-size:1.8rem;"></i>
+        <p>No users yet</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Jobs by Type chart
+const jobTypeCtx = document.getElementById('jobTypeChart').getContext('2d');
+new Chart(jobTypeCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ job_type_labels|safe }},
+    datasets: [{
+      label: 'Jobs',
+      data: {{ job_type_data|safe }},
+      backgroundColor: ['#f05a28','#00b09b','#3b82f6','#8b5cf6','#d97706','#dc2626'],
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0, font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// App Status chart
+const appCtx = document.getElementById('appStatusChart').getContext('2d');
+new Chart(appCtx, {
+  type: 'doughnut',
+  data: {
+    labels: {{ app_status_labels|safe }},
+    datasets: [{
+      data: {{ app_status_counts|safe }},
+      backgroundColor: ['#d97706','#3b82f6','#16a34a','#dc2626'],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }
+    }
+  }
+});
+</script>
+{% endblock %}

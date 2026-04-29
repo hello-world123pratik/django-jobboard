@@ -1,0 +1,284 @@
+{% extends "admin_panel/base.html" %}
+{% block title %}Applications{% endblock %}
+{% block page_title %}Applications{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── FILTER BAR ── */
+.filter-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px 16px; margin-bottom: 20px;
+}
+/* ── APPLICATION CARDS ── */
+.app-cards { display: flex; flex-direction: column; gap: 14px; }
+.app-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  transition: box-shadow var(--ease);
+}
+.app-card:hover { box-shadow: var(--shadow-md); }
+.app-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc; flex-wrap: wrap;
+}
+.app-card-head-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.app-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.app-user-name  { font-size: 0.9rem; font-weight: 700; color: var(--navy); }
+.app-user-email { font-size: 0.75rem; color: var(--muted); }
+.app-card-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+/* ── CARD BODY ── */
+.app-card-body { padding: 14px 18px; }
+.app-meta-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 12px;
+}
+.app-meta-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.78rem; color: var(--muted);
+}
+.app-meta-item i { font-size: 0.82rem; }
+
+/* ── COVER LETTER ── */
+.cover-block { margin-bottom: 12px; }
+.cover-label {
+  font-size: 0.7rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 6px;
+}
+.cover-text {
+  background: var(--bg); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 10px 14px; font-size: 0.84rem; color: #475569;
+  line-height: 1.7; white-space: pre-wrap;
+  /* collapsed state */
+  max-height: 72px; overflow: hidden;
+  position: relative; transition: max-height 0.35s ease;
+}
+.cover-text.expanded { max-height: 2000px; }
+.cover-text::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 28px; background: linear-gradient(transparent, var(--bg));
+  transition: opacity 0.3s;
+}
+.cover-text.expanded::after { opacity: 0; pointer-events: none; }
+.cover-toggle {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.76rem; font-weight: 600; color: var(--accent);
+  padding: 4px 0; display: flex; align-items: center; gap: 4px;
+  font-family: inherit; margin-top: 4px;
+}
+.cover-toggle:hover { color: var(--accent-h); }
+
+/* ── CARD FOOTER ── */
+.app-card-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: #fafbfc; flex-wrap: wrap;
+}
+.app-foot-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.app-foot-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ── STATUS SELECT ── */
+.status-select {
+  padding: 5px 10px; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); font-family: inherit;
+  font-size: 0.78rem; font-weight: 600; color: var(--text);
+  background: #fff; cursor: pointer; outline: none;
+}
+.status-select:focus { border-color: var(--accent); }
+
+/* ── PAGINATION ── */
+.pagination-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 18px; flex-wrap: wrap; gap: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Applications</h1>
+    <p class="page-sub">{{ total_count }} total application{{ total_count|pluralize }}</p>
+  </div>
+  <a href="{% url 'admin_applications' %}?export=csv" class="btn btn-ghost btn-sm">
+    <i class="bi bi-download"></i> Export CSV
+  </a>
+</div>
+
+<!-- Filter bar -->
+<form method="get" id="filterForm">
+  <div class="filter-row">
+    <div class="search-box" style="flex:1;min-width:200px;">
+      <i class="bi bi-search"></i>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search applicant or job…" autocomplete="off">
+    </div>
+
+    <select name="status" class="status-select" onchange="this.form.submit()" style="padding:7px 11px;">
+      <option value="">All Statuses</option>
+      {% for val, label in status_choices %}
+      <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="job" onchange="this.form.submit()"
+            style="padding:7px 11px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:0.83rem;background:#fff;outline:none;cursor:pointer;max-width:220px;">
+      <option value="">All Jobs</option>
+      {% for j in all_jobs %}
+      <option value="{{ j.pk }}" {% if job_filter == j.pk|stringformat:"s" %}selected{% endif %}>
+        {{ j.title|truncatechars:36 }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> Search</button>
+    {% if query or status_filter or job_filter %}
+    <a href="{% url 'admin_applications' %}" class="btn btn-ghost btn-sm"><i class="bi bi-x"></i> Clear</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Application Cards -->
+{% if applications %}
+<div class="app-cards">
+  {% for app in applications %}
+  <div class="app-card">
+
+    <!-- Card Header: applicant info + job tags -->
+    <div class="app-card-head">
+      <div class="app-card-head-left">
+        <div class="app-avatar">{{ app.user.username|first|upper }}</div>
+        <div>
+          <div class="app-user-name">{{ app.user.username }}</div>
+          <div class="app-user-email">{{ app.user.email }}</div>
+        </div>
+      </div>
+      <div class="app-card-head-right">
+        <span style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.8rem;font-weight:600;color:var(--navy);">
+          <i class="bi bi-briefcase" style="color:var(--accent);"></i>{{ app.job.title|truncatechars:30 }}
+        </span>
+        <span class="badge badge-gray">{{ app.job.company_name }}</span>
+      </div>
+    </div>
+
+    <!-- Card Body: meta + cover letter -->
+    <div class="app-card-body">
+      <div class="app-meta-row">
+        <span class="app-meta-item"><i class="bi bi-geo-alt"></i>{{ app.job.location }}</span>
+        <span class="app-meta-item"><i class="bi bi-briefcase"></i>{{ app.job.job_type }}</span>
+        {% if app.job.category %}
+        <span class="badge badge-orange">{{ app.job.category.name }}</span>
+        {% endif %}
+        <span class="app-meta-item"><i class="bi bi-calendar3"></i>Applied {{ app.created_at|date:"M d, Y" }}</span>
+        <span class="app-meta-item"><i class="bi bi-clock"></i>{{ app.created_at|timesince }} ago</span>
+      </div>
+
+      {% if app.cover_letter %}
+      <div class="cover-block">
+        <div class="cover-label">Cover Letter</div>
+        <div class="cover-text" id="cover-{{ app.pk }}">{{ app.cover_letter }}</div>
+        {% if app.cover_letter|length > 180 %}
+        <button class="cover-toggle" onclick="toggleCover({{ app.pk }}, this)" type="button">
+          <i class="bi bi-chevron-down" id="icon-{{ app.pk }}"></i> Read more
+        </button>
+        {% endif %}
+      </div>
+      {% else %}
+      <p style="font-size:0.83rem;color:var(--muted);font-style:italic;margin-bottom:10px;">No cover letter submitted.</p>
+      {% endif %}
+    </div>
+
+    <!-- Card Footer: resume + status + delete -->
+    <div class="app-card-foot">
+      <div class="app-foot-left">
+        {% if app.resume %}
+        <a href="{{ app.resume.url }}" target="_blank" class="btn btn-primary btn-sm">
+          <i class="bi bi-file-earmark-person"></i> View Resume
+        </a>
+        {% else %}
+        <span class="badge badge-gray"><i class="bi bi-file-earmark-x"></i> No Resume</span>
+        {% endif %}
+        <span style="font-size:0.75rem;color:var(--muted);">
+          <i class="bi bi-hash"></i> App #{{ app.pk }}
+        </span>
+      </div>
+      <div class="app-foot-right">
+        <form method="post" action="{% url 'admin_application_status' app.pk %}">
+          {% csrf_token %}
+          <select name="status" class="status-select" onchange="this.form.submit()">
+            {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if app.status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <form method="post" action="{% url 'admin_application_delete' app.pk %}"
+              onsubmit="return confirm('Permanently delete this application?')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-xs" title="Delete application">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="pagination-row">
+  <span class="text-muted text-sm">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+  </span>
+  <div style="display:flex;gap:6px;">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if job_filter %}&job={{ job_filter }}{% endif %}"
+       class="btn btn-ghost btn-sm"><i class="bi bi-chevron-left"></i> Prev</a>
+    {% endif %}
+    <span style="padding:6px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:0.83rem;font-weight:600;background:#fff;">
+      {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if job_filter %}&job={{ job_filter }}{% endif %}"
+       class="btn btn-ghost btn-sm">Next <i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state">
+      <i class="bi bi-inbox empty-icon"></i>
+      <h3>No applications found</h3>
+      <p>Try adjusting your search or filters.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCover(pk, btn) {
+  const el   = document.getElementById('cover-' + pk);
+  const icon = document.getElementById('icon-' + pk);
+  const expanded = el.classList.toggle('expanded');
+  icon.className  = expanded ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+  btn.childNodes[1].textContent = expanded ? ' Show less' : ' Read more';
+}
+</script>
+{% endblock %}

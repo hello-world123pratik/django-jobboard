@@ -1,0 +1,89 @@
+{% extends "admin_panel/base.html" %}
+{% block title %}Categories{% endblock %}
+{% block page_title %}Categories{% endblock %}
+
+{% block content %}
+<div style="max-width:800px;">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Categories</h1>
+      <p class="page-sub">{{ categories|length }} categories configured</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
+    <!-- List -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-head-title"><i class="bi bi-tags"></i> All Categories</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>Jobs</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for cat in categories %}
+            <tr>
+              <td class="fw-600" style="font-size:0.875rem;">{{ cat.name }}</td>
+              <td><a href="{% url 'admin_jobs' %}?category={{ cat.pk }}" style="color:var(--accent);font-weight:700;">{{ cat.job_count }}</a></td>
+              <td>
+                <div class="flex-center gap-1">
+                  <button class="btn btn-ghost btn-xs" onclick="editCat({{ cat.pk }}, '{{ cat.name|escapejs }}')">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="post" action="{% url 'admin_category_delete' cat.pk %}" onsubmit="return confirm('Delete {{ cat.name }}? Jobs will lose this category.')">{% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-xs"><i class="bi bi-trash"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3"><div class="empty-state" style="padding:20px;"><p>No categories yet</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add/Edit form -->
+    <div class="card" id="catFormCard">
+      <div class="card-head">
+        <span class="card-head-title" id="catFormTitle"><i class="bi bi-plus-circle"></i> Add Category</span>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'admin_category_save' %}" id="catForm">
+          {% csrf_token %}
+          <input type="hidden" name="cat_id" id="catId" value="">
+          <div class="form-group">
+            <label class="form-label">Category Name <span style="color:var(--accent);">*</span></label>
+            <input type="text" name="name" id="catName" class="form-control" placeholder="e.g. Software Development" required>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button type="submit" class="btn btn-primary" id="catSubmitBtn"><i class="bi bi-plus-lg"></i> Add Category</button>
+            <button type="button" class="btn btn-ghost" onclick="resetCatForm()" id="catCancelBtn" style="display:none;"><i class="bi bi-x"></i> Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editCat(id, name) {
+  document.getElementById('catId').value = id;
+  document.getElementById('catName').value = name;
+  document.getElementById('catFormTitle').innerHTML = '<i class="bi bi-pencil"></i> Edit Category';
+  document.getElementById('catSubmitBtn').innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+  document.getElementById('catCancelBtn').style.display = '';
+  document.getElementById('catName').focus();
+}
+function resetCatForm() {
+  document.getElementById('catId').value = '';
+  document.getElementById('catName').value = '';
+  document.getElementById('catFormTitle').innerHTML = '<i class="bi bi-plus-circle"></i> Add Category';
+  document.getElementById('catSubmitBtn').innerHTML = '<i class="bi bi-plus-lg"></i> Add Category';
+  document.getElementById('catCancelBtn').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "admin_panel/base.html" %}
+{% block title %}{{ profile_user.username }}{% endblock %}
+{% block page_title %}User Detail{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ profile_user.username }}</h1>
+      <p class="page-sub">{{ profile_user.email }}</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="{% url 'admin_users' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+      <form method="post" action="{% url 'admin_user_toggle' profile_user.pk %}">{% csrf_token %}
+        <button type="submit" class="btn btn-sm {% if profile_user.is_active %}btn-danger{% else %}btn-success{% endif %}">
+          {% if profile_user.is_active %}<i class="bi bi-slash-circle"></i> Deactivate{% else %}<i class="bi bi-check-circle"></i> Activate{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:18px;">
+    <!-- Left -->
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="background:var(--navy);padding:24px;text-align:center;">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;margin:0 auto 12px;">{{ profile_user.username|first|upper }}</div>
+          <div style="color:#fff;font-size:1rem;font-weight:700;margin-bottom:3px;">{{ profile_user.username }}</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:0.8rem;margin-bottom:10px;">{{ profile_user.email }}</div>
+          {% if profile_user.is_superuser %}
+          <span class="badge badge-purple"><i class="bi bi-shield-fill"></i> Admin</span>
+          {% elif profile_user.profile.role == 'employer' %}
+          <span class="badge badge-blue"><i class="bi bi-building"></i> Employer</span>
+          {% else %}
+          <span class="badge badge-green"><i class="bi bi-person-badge"></i> Job Seeker</span>
+          {% endif %}
+        </div>
+        <div style="padding:0 18px;">
+          {% for row in detail_rows %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.83rem;">
+            <span style="color:var(--muted);display:flex;align-items:center;gap:5px;"><i class="bi bi-{{ row.icon }}"></i> {{ row.label }}</span>
+            <span style="font-weight:600;color:var(--navy);">{{ row.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if profile_user.profile.skills %}
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><span class="card-head-title"><i class="bi bi-tools"></i> Skills</span></div>
+        <div class="card-body">
+          {% for skill in profile_user.profile.get_skills_list %}
+          <span style="display:inline-block;background:rgba(240,90,40,0.09);color:#c13d10;border-radius:5px;padding:3px 9px;font-size:0.76rem;font-weight:600;margin:2px 3px 2px 0;">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right -->
+    <div>
+      {% if profile_user.profile.role == 'employer' %}
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+          <span class="card-head-title"><i class="bi bi-briefcase"></i> Posted Jobs ({{ jobs.count }})</span>
+          <a href="{% url 'admin_jobs' %}" class="btn btn-ghost btn-xs">View All</a>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Title</th><th>Type</th><th>Apps</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+              {% for job in jobs %}
+              <tr>
+                <td>
+                  <a href="{% url 'admin_job_edit' job.pk %}" style="font-weight:600;font-size:0.83rem;color:var(--navy);">{{ job.title }}</a>
+                  <div class="text-muted text-sm">{{ job.company_name }}</div>
+                </td>
+                <td><span class="badge badge-orange">{{ job.job_type }}</span></td>
+                <td><span class="fw-600" style="color:var(--accent);">{{ job.app_count }}</span></td>
+                <td>{% if job.is_approved %}<span class="badge badge-green">Live</span>{% else %}<span class="badge badge-yellow">Pending</span>{% endif %}</td>
+                <td class="text-muted text-sm">{{ job.created_at|date:"M d, Y" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);font-size:0.83rem;">No jobs posted</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+          <span class="card-head-title"><i class="bi bi-send"></i> Applications ({{ applications.count }})</span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Job</th><th>Company</th><th>Status</th><th>Applied</th></tr></thead>
+            <tbody>
+              {% for app in applications %}
+              <tr>
+                <td><div class="fw-600" style="font-size:0.83rem;">{{ app.job.title }}</div></td>
+                <td class="text-muted text-sm">{{ app.job.company_name }}</td>
+                <td>
+                  <span class="badge {% if app.status == 'shortlisted' %}badge-green{% elif app.status == 'rejected' %}badge-red{% elif app.status == 'reviewed' %}badge-blue{% else %}badge-yellow{% endif %}">{{ app.get_status_display }}</span>
+                </td>
+                <td class="text-muted text-sm">{{ app.created_at|date:"M d, Y" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);font-size:0.83rem;">No applications</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if profile_user.profile.bio or profile_user.profile.education or profile_user.profile.experience %}
+      <div class="card">
+        <div class="card-head"><span class="card-head-title"><i class="bi bi-person-lines-fill"></i> Profile Info</span></div>
+        <div class="card-body">
+          {% if profile_user.profile.bio %}
+          <div style="margin-bottom:14px;"><div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Bio</div><p style="font-size:0.875rem;color:#475569;line-height:1.7;">{{ profile_user.profile.bio }}</p></div>
+          {% endif %}
+          {% if profile_user.profile.education %}
+          <div style="margin-bottom:14px;"><div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Education</div><p style="font-size:0.875rem;color:#475569;line-height:1.7;white-space:pre-wrap;">{{ profile_user.profile.education }}</p></div>
+          {% endif %}
+          {% if profile_user.profile.experience %}
+          <div><div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Experience</div><p style="font-size:0.875rem;color:#475569;line-height:1.7;white-space:pre-wrap;">{{ profile_user.profile.experience }}</p></div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

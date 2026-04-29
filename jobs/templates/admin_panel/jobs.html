@@ -1,0 +1,178 @@
+{% extends "admin_panel/base.html" %}
+{% block title %}Jobs{% endblock %}
+{% block page_title %}Job Listings{% endblock %}
+
+{% block extra_head %}
+<style>
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 16px; }
+.filter-select { padding: 7px 11px; border: 1.5px solid var(--border); border-radius: var(--r-sm); font-family: inherit; font-size: 0.83rem; color: var(--text); background: #fff; outline: none; cursor: pointer; }
+.filter-select:focus { border-color: var(--accent); }
+.bulk-bar { display: none; align-items: center; gap: 10px; background: var(--navy); color: #fff; padding: 10px 16px; border-radius: var(--r-sm); margin-bottom: 12px; font-size: 0.85rem; }
+.bulk-bar.visible { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Job Listings</h1>
+    <p class="page-sub">{{ total_count }} total · {{ pending_count }} pending approval</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'admin_job_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Job</a>
+    <a href="{% url 'job_list' %}" target="_blank" class="btn btn-ghost btn-sm"><i class="bi bi-globe"></i> View Live</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<form method="get" id="filterForm">
+  <div class="filter-bar">
+    <div class="search-box" style="flex:1;min-width:200px;">
+      <i class="bi bi-search"></i>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search jobs…" autocomplete="off">
+    </div>
+    <select name="filter" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Jobs</option>
+      <option value="pending" {% if filter == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="approved" {% if filter == 'approved' %}selected{% endif %}>Approved</option>
+    </select>
+    <select name="job_type" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Types</option>
+      {% for val, label in job_type_choices %}
+      <option value="{{ val }}" {% if job_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="category" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Categories</option>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> Search</button>
+    {% if query or filter or job_type or selected_category %}
+    <a href="{% url 'admin_jobs' %}" class="btn btn-ghost btn-sm"><i class="bi bi-x"></i> Clear</a>
+    {% endif %}
+  </div>
+
+  <!-- Bulk action bar -->
+  <div class="bulk-bar" id="bulkBar">
+    <span id="bulkCount">0</span> selected
+    <button type="submit" name="bulk_action" value="approve" class="btn btn-success btn-sm">
+      <i class="bi bi-check-lg"></i> Approve
+    </button>
+    <button type="submit" name="bulk_action" value="reject" class="btn btn-danger btn-sm" onclick="return confirm('Delete selected jobs?')">
+      <i class="bi bi-trash"></i> Delete
+    </button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="uncheckAll()" style="color:#fff;border-color:rgba(255,255,255,0.3);">Cancel</button>
+  </div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th><input type="checkbox" class="tbl-check" id="checkAll" onclick="toggleAll(this)"></th>
+            <th>Job / Company</th>
+            <th>Location</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Apps</th>
+            <th>Status</th>
+            <th>Posted</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <td><input type="checkbox" name="selected_jobs" value="{{ job.pk }}" class="tbl-check row-check" onchange="updateBulk()"></td>
+            <td>
+              <div class="flex-center gap-2">
+                <div class="avatar-sm avatar-logo" style="width:34px;height:34px;border-radius:7px;font-size:0.8rem;">{{ job.company_name|first|upper }}</div>
+                <div>
+                  <div class="fw-600" style="font-size:0.855rem;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ job.title }}</div>
+                  <div class="text-muted text-sm">{{ job.company_name }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="text-muted text-sm">{{ job.location }}</td>
+            <td><span class="badge badge-orange">{{ job.job_type }}</span></td>
+            <td class="text-muted text-sm">{{ job.category.name|default:"—" }}</td>
+            <td>
+              <a href="{% url 'admin_applications' %}?job={{ job.pk }}" class="fw-600" style="color:var(--accent);">{{ job.app_count }}</a>
+            </td>
+            <td>
+              {% if job.is_approved %}
+                <span class="badge badge-green"><i class="bi bi-check-circle-fill"></i> Live</span>
+              {% else %}
+                <span class="badge badge-yellow"><i class="bi bi-hourglass-split"></i> Pending</span>
+              {% endif %}
+            </td>
+            <td class="text-muted text-sm">{{ job.created_at|date:"M d, Y" }}</td>
+            <td>
+              <div class="flex-center gap-1" style="flex-wrap:nowrap;">
+                <a href="{% url 'admin_job_edit' job.pk %}" class="btn btn-ghost btn-xs"><i class="bi bi-pencil"></i></a>
+                {% if not job.is_approved %}
+                <form method="post" action="{% url 'admin_job_approve' job.pk %}" style="display:inline;">{% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-xs"><i class="bi bi-check-lg"></i></button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'admin_job_delete' job.pk %}" style="display:inline;" onsubmit="return confirm('Delete this job?')">{% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-xs"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9">
+              <div class="empty-state">
+                <i class="bi bi-briefcase empty-icon"></i>
+                <h3>No jobs found</h3>
+                <p>Try adjusting your filters.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:10px;">
+    <span class="text-muted text-sm">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+    <div style="display:flex;gap:6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}" class="btn btn-ghost btn-sm"><i class="bi bi-chevron-left"></i> Prev</a>
+      {% endif %}
+      <span style="padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:0.83rem;font-weight:600;background:#fff;">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}" class="btn btn-ghost btn-sm">Next <i class="bi bi-chevron-right"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(cb) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  updateBulk();
+}
+function updateBulk() {
+  const checked = document.querySelectorAll('.row-check:checked').length;
+  const bar = document.getElementById('bulkBar');
+  bar.classList.toggle('visible', checked > 0);
+  document.getElementById('bulkCount').textContent = checked;
+  document.getElementById('checkAll').checked = checked === document.querySelectorAll('.row-check').length;
+}
+function uncheckAll() {
+  document.querySelectorAll('.row-check, #checkAll').forEach(c => c.checked = false);
+  updateBulk();
+}
+</script>
+{% endblock %}

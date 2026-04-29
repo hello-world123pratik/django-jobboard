@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}My Applications — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.app-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition); }
+.app-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.ac-header { display: flex; align-items: flex-start; gap: 12px; }
+.ac-logo { width: 46px; height: 46px; border-radius: 10px; background: var(--navy); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; flex-shrink: 0; }
+.ac-title { font-size: 0.97rem; font-weight: 700; color: var(--navy); text-decoration: none; display: block; margin-bottom: 2px; }
+.ac-title:hover { color: var(--accent); }
+.ac-company { font-size: 0.83rem; color: var(--muted); }
+.ac-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.ac-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border); }
+.ac-date { font-size: 0.76rem; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 0.73rem; font-weight: 700; }
+.status-pending { background: #fffbeb; color: #b45309; }
+.status-reviewed { background: #eff6ff; color: #1d4ed8; }
+.status-shortlisted { background: #f0fdf4; color: #15803d; }
+.status-rejected { background: #fef2f2; color: #dc2626; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">My Applications</h1>
+    <p class="page-sub">Track all your submitted job applications</p>
+  </div>
+  <a href="{% url 'job_list' %}" class="btn btn-primary"><i class="bi bi-search"></i> Find More Jobs</a>
+</div>
+
+{% if applications %}
+<div style="margin-bottom:20px;">
+  <span class="badge badge-navy" style="font-size:0.85rem;padding:6px 14px;">
+    <i class="bi bi-send"></i> {{ applications|length }} Application{{ applications|length|pluralize }}
+  </span>
+</div>
+<div class="apps-grid">
+  {% for app in applications %}
+  <div class="app-card">
+    <div class="ac-header">
+      <div class="ac-logo">{{ app.job.company_name|first|upper }}</div>
+      <div>
+        <a href="{% url 'job_detail' app.job.pk %}" class="ac-title">{{ app.job.title }}</a>
+        <div class="ac-company"><i class="bi bi-building" style="margin-right:3px;"></i>{{ app.job.company_name }}</div>
+      </div>
+    </div>
+    <div class="ac-meta">
+      {% if app.job.location %}<span class="badge badge-navy"><i class="bi bi-geo-alt"></i>{{ app.job.location }}</span>{% endif %}
+      <span class="badge badge-orange">{{ app.job.job_type }}</span>
+      {% if app.job.category %}<span class="badge badge-navy">{{ app.job.category.name }}</span>{% endif %}
+    </div>
+    <div class="ac-footer">
+      <span class="ac-date"><i class="bi bi-calendar3"></i>{{ app.created_at|date:"M j, Y" }}</span>
+      <span class="status-badge status-{{ app.status }}">
+        {% if app.status == 'pending' %}<i class="bi bi-hourglass-split"></i>
+        {% elif app.status == 'reviewed' %}<i class="bi bi-eye"></i>
+        {% elif app.status == 'shortlisted' %}<i class="bi bi-star-fill"></i>
+        {% else %}<i class="bi bi-x-circle"></i>{% endif %}
+        {{ app.get_status_display }}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="card-body">
+  <div class="empty-state">
+    <i class="bi bi-send empty-icon"></i>
+    <h3>No applications yet</h3>
+    <p>You haven't applied for any jobs yet. Browse listings and send your first application!</p>
+    <a href="{% url 'job_list' %}" class="btn btn-primary" style="margin-top:16px;"><i class="bi bi-search"></i> Browse Jobs</a>
+  </div>
+</div></div>
+{% endif %}
+{% endblock %}

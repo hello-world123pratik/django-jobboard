@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.edit-wrap { max-width: 700px; margin: 0 auto; }
+.sec-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 18px; }
+.sec-head { padding: 14px 22px; background: var(--light); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.sec-head h3 { font-size: 0.93rem; font-weight: 700; color: var(--navy); }
+.sec-head i { color: var(--accent); }
+.sec-body { padding: 22px; }
+.upload-zone { border: 2px dashed var(--border); border-radius: var(--r); padding: 26px; text-align: center; cursor: pointer; transition: all var(--transition); background: var(--light); }
+.upload-zone:hover { border-color: var(--accent); background: rgba(240,90,40,0.04); }
+.upload-zone input[type="file"] { display: none; }
+.upload-icon { font-size: 1.8rem; color: var(--accent); display: block; margin-bottom: 8px; }
+.current-resume { display: flex; align-items: center; justify-content: space-between; background: var(--light); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 14px; margin-bottom: 12px; }
+.cr-info { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="edit-wrap">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Edit Profile</h1>
+      <p class="page-sub">
+        {% if is_admin_user %}Update your administrator account details
+        {% elif is_employer %}Manage your employer profile and company information
+        {% else %}Keep your profile updated to attract the best opportunities
+        {% endif %}
+      </p>
+    </div>
+    <a href="{% url 'profile' pk=request.user.pk %}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-arrow-left"></i> View Profile
+    </a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- ── CONTACT INFO (all roles) ── -->
+    <div class="sec-card">
+      <div class="sec-head"><i class="bi bi-person-lines-fill"></i><h3>Basic Information</h3></div>
+      <div class="sec-body">
+        <div class="form-group">
+          <label class="form-label" for="{{ form.bio.id_for_label }}">
+            {% if is_employer %}Company / Professional Bio{% else %}Professional Bio{% endif %}
+          </label>
+          <textarea name="bio" id="{{ form.bio.id_for_label }}" class="form-control" rows="3"
+                    placeholder="{% if is_employer %}Brief description of your company or hiring team…{% elif is_admin_user %}Brief description about yourself…{% else %}Brief professional summary about yourself…{% endif %}">{{ form.bio.value|default:'' }}</textarea>
+          {% if form.bio.errors %}<div class="form-error">{{ form.bio.errors|join:" " }}</div>{% endif %}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="{{ form.phone.id_for_label }}">Phone</label>
+            <input type="text" name="phone" id="{{ form.phone.id_for_label }}" class="form-control"
+                   value="{{ form.phone.value|default:'' }}" placeholder="+91 9876543210">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="{{ form.location.id_for_label }}">
+              {% if is_employer %}City / Office Location{% else %}Location{% endif %}
+            </label>
+            <input type="text" name="location" id="{{ form.location.id_for_label }}" class="form-control"
+                   value="{{ form.location.value|default:'' }}" placeholder="City, Country">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:16px;margin-bottom:0;">
+          <label class="form-label" for="{{ form.website.id_for_label }}">
+            {% if is_employer %}Company Website{% else %}Portfolio / Website{% endif %}
+          </label>
+          <input type="url" name="website" id="{{ form.website.id_for_label }}" class="form-control"
+                 value="{{ form.website.value|default:'' }}"
+                 placeholder="{% if is_employer %}https://yourcompany.com{% else %}https://yourportfolio.com{% endif %}">
+          {% if form.website.errors %}<div class="form-error">{{ form.website.errors|join:" " }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if not is_admin_user %}
+
+      {% if is_employer %}
+      <!-- ── EMPLOYER: no resume/skills/education, show quick links instead ── -->
+      <div class="sec-card">
+        <div class="sec-head"><i class="bi bi-building"></i><h3>Employer Actions</h3></div>
+        <div class="sec-body">
+          <p style="font-size:0.88rem;color:var(--muted);margin-bottom:16px;line-height:1.65;">
+            As an employer, manage your job listings and review incoming applications from the links below.
+          </p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="{% url 'job_create' %}" class="btn btn-success"><i class="bi bi-plus-circle"></i> Post a Job</a>
+            <a href="{% url 'employer_jobs' %}" class="btn btn-ghost"><i class="bi bi-list-ul"></i> My Listings</a>
+            <a href="{% url 'employer_applications' %}" class="btn btn-ghost"><i class="bi bi-inbox"></i> Applications</a>
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- ── JOB SEEKER: resume, skills, education, experience ── -->
+
+      <!-- Resume -->
+      <div class="sec-card">
+        <div class="sec-head"><i class="bi bi-file-earmark-person"></i><h3>Resume / CV</h3></div>
+        <div class="sec-body">
+          {% if profile.resume %}
+          <div class="current-resume">
+            <div class="cr-info">
+              <i class="bi bi-file-earmark-pdf" style="color:var(--accent);font-size:1.2rem;"></i>
+              Current Resume on File
+            </div>
+            <a href="{{ profile.resume.url }}" target="_blank" class="btn btn-ghost btn-sm">
+              <i class="bi bi-eye"></i> View
+            </a>
+          </div>
+          {% endif %}
+          <label class="upload-zone" id="uploadZone">
+            <input type="file" name="resume" id="resumeFile" accept=".pdf,.doc,.docx" onchange="handleUpload(this)">
+            <i class="bi bi-cloud-upload upload-icon" id="uploadIcon"></i>
+            <div style="font-size:0.87rem;color:var(--muted);">
+              <strong style="color:var(--accent);">Click to upload</strong> new resume<br>
+              PDF, DOC, DOCX (max 5MB)
+            </div>
+            <div id="uploadName" style="display:none;margin-top:8px;font-size:0.85rem;font-weight:600;color:var(--teal);"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Skills -->
+      <div class="sec-card">
+        <div class="sec-head"><i class="bi bi-tools"></i><h3>Skills</h3></div>
+        <div class="sec-body">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="{{ form.skills.id_for_label }}">Your Skills</label>
+            <input type="text" name="skills" id="{{ form.skills.id_for_label }}" class="form-control"
+                   value="{{ form.skills.value|default:'' }}" placeholder="e.g. Python, Django, React, SQL, Git">
+            <p class="form-hint">Separate skills with commas. These help employers find you.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Education -->
+      <div class="sec-card">
+        <div class="sec-head"><i class="bi bi-mortarboard"></i><h3>Education</h3></div>
+        <div class="sec-body">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="{{ form.education.id_for_label }}">Education History</label>
+            <textarea name="education" id="{{ form.education.id_for_label }}" class="form-control" rows="4"
+                      placeholder="e.g. B.Sc Computer Science, XYZ University (2018–2022)&#10;Relevant coursework: Algorithms, Databases, Web Dev…">{{ form.education.value|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Experience -->
+      <div class="sec-card">
+        <div class="sec-head"><i class="bi bi-briefcase"></i><h3>Work Experience</h3></div>
+        <div class="sec-body">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="{{ form.experience.id_for_label }}">Experience</label>
+            <textarea name="experience" id="{{ form.experience.id_for_label }}" class="form-control" rows="5"
+                      placeholder="e.g. Software Developer at ACME Corp (Jan 2022 – Present)&#10;— Built REST APIs with Django and PostgreSQL&#10;— Led a team of 3 junior developers…">{{ form.experience.value|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      {% endif %}
+    {% endif %}
+
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:4px;">
+      <a href="{% url 'profile' pk=request.user.pk %}" class="btn btn-ghost"><i class="bi bi-x"></i> Cancel</a>
+      <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-lg"></i> Save Changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function handleUpload(input) {
+  const zone = document.getElementById('uploadZone');
+  const name = document.getElementById('uploadName');
+  const icon = document.getElementById('uploadIcon');
+  if (input.files && input.files[0]) {
+    const f = input.files[0];
+    if (f.size > 5 * 1024 * 1024) { alert('File too large. Max 5MB.'); input.value = ''; return; }
+    name.textContent = '✓ ' + f.name;
+    name.style.display = 'block';
+    zone.style.borderColor = 'var(--teal)';
+    zone.style.background = 'rgba(0,176,155,0.05)';
+    icon.className = 'bi bi-file-earmark-check upload-icon';
+    icon.style.color = 'var(--teal)';
+  }
+}
+</script>
+{% endblock %}

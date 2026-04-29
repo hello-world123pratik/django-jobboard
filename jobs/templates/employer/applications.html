@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Applications Received — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.app-row { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 20px 22px; margin-bottom: 14px; transition: all var(--transition); }
+.app-row:hover { box-shadow: var(--shadow-md); }
+.app-row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.applicant-info { display: flex; align-items: center; gap: 12px; }
+.applicant-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem; flex-shrink: 0; }
+.applicant-name { font-size: 0.97rem; font-weight: 700; color: var(--navy); }
+.applicant-email { font-size: 0.82rem; color: var(--muted); }
+.job-tag { background: var(--light); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px 10px; font-size: 0.82rem; color: var(--navy); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+
+/* Cover letter — full text, no clipping */
+.cover-section { margin-bottom: 14px; }
+.cover-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.cover-body {
+  background: var(--light);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 14px 18px;
+  font-size: 0.9rem; color: #374151;
+  line-height: 1.8;
+  /* collapsed: show first ~4 lines */
+  max-height: 96px;
+  overflow: hidden;
+  position: relative;
+  transition: max-height 0.4s ease;
+}
+.cover-body.expanded {
+  max-height: 4000px; /* large enough for any letter */
+}
+/* fade-out gradient in collapsed state */
+.cover-body::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 36px;
+  background: linear-gradient(transparent, var(--light));
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.cover-body.expanded::after { opacity: 0; }
+
+.cover-toggle-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 0.82rem; font-weight: 600;
+  color: var(--accent); padding: 5px 0; margin-top: 2px;
+  transition: color var(--transition);
+}
+.cover-toggle-btn:hover { color: var(--accent-h); }
+
+.app-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border); }
+.app-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.status-select { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: var(--r-sm); font-family: inherit; font-size: 0.82rem; color: var(--text); background: #fff; cursor: pointer; outline: none; }
+.status-select:focus { border-color: var(--accent); }
+.filter-bar { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Applications Received</h1>
+    <p class="page-sub">Review and manage incoming applications</p>
+  </div>
+  {% if applications %}
+  <span class="badge badge-teal" style="font-size:0.88rem;padding:7px 14px;">
+    <i class="bi bi-inbox"></i> {{ applications|length }} Application{{ applications|length|pluralize }}
+  </span>
+  {% endif %}
+</div>
+
+<!-- Filter bar -->
+<form method="get" class="filter-bar">
+  <span style="font-size:0.83rem;font-weight:700;color:var(--navy);">Filter by status:</span>
+  <a href="{% url 'employer_applications' %}"
+     class="badge {% if not status_filter %}badge-orange{% else %}badge-navy{% endif %}"
+     style="padding:5px 12px;cursor:pointer;text-decoration:none;">All</a>
+  {% for val, label in status_choices %}
+  <a href="?status={{ val }}"
+     class="badge {% if status_filter == val %}badge-orange{% else %}badge-navy{% endif %}"
+     style="padding:5px 12px;cursor:pointer;text-decoration:none;">{{ label }}</a>
+  {% endfor %}
+</form>
+
+{% if applications %}
+  {% for app in applications %}
+  <div class="app-row">
+
+    <!-- Applicant header -->
+    <div class="app-row-top">
+      <div class="applicant-info">
+        <div class="applicant-avatar">{{ app.user.username|first|upper }}</div>
+        <div>
+          <div class="applicant-name">{{ app.user.username }}</div>
+          <div class="applicant-email">{{ app.user.email }}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="job-tag"><i class="bi bi-briefcase"></i>{{ app.job.title }}</span>
+        <span class="badge badge-navy">{{ app.job.company_name }}</span>
+      </div>
+    </div>
+
+    <!-- Cover Letter — expandable full text -->
+    {% if app.cover_letter %}
+    <div class="cover-section">
+      <div class="cover-label">
+        <i class="bi bi-envelope-open" style="color:var(--accent);"></i>
+        Cover Letter
+      </div>
+      <div class="cover-body" id="cl-{{ app.pk }}">{{ app.cover_letter|linebreaksbr }}</div>
+      <button type="button" class="cover-toggle-btn"
+              id="cl-btn-{{ app.pk }}"
+              onclick="toggleCover({{ app.pk }})">
+        <i class="bi bi-chevron-down" id="cl-icon-{{ app.pk }}"></i>
+        <span id="cl-text-{{ app.pk }}">Read full cover letter</span>
+      </button>
+    </div>
+    {% else %}
+    <div style="font-size:0.87rem;color:var(--muted);font-style:italic;margin-bottom:14px;">
+      No cover letter submitted.
+    </div>
+    {% endif %}
+
+    <!-- Footer: date, resume, status -->
+    <div class="app-footer">
+      <div style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span><i class="bi bi-calendar3" style="margin-right:3px;"></i>{{ app.created_at|date:"M d, Y" }}</span>
+        <span><i class="bi bi-clock" style="margin-right:3px;"></i>{{ app.created_at|timesince }} ago</span>
+      </div>
+      <div class="app-actions">
+        {% if app.resume %}
+        <a href="{{ app.resume.url }}" target="_blank" class="btn btn-primary btn-sm">
+          <i class="bi bi-file-earmark-person"></i> Resume
+        </a>
+        {% else %}
+        <span class="badge badge-navy"><i class="bi bi-file-earmark-x"></i> No Resume</span>
+        {% endif %}
+
+        <form method="post" action="{% url 'update_application_status' app.pk %}"
+              style="display:flex;align-items:center;gap:6px;">
+          {% csrf_token %}
+          <select name="status" class="status-select" onchange="this.form.submit()">
+            {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if app.status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="card"><div class="card-body">
+  <div class="empty-state">
+    <i class="bi bi-envelope empty-icon"></i>
+    <h3>No applications yet</h3>
+    <p>Applications will appear here once job seekers apply to your listings.</p>
+    <a href="{% url 'employer_jobs' %}" class="btn btn-primary" style="margin-top:16px;">
+      <i class="bi bi-briefcase"></i> View My Jobs
+    </a>
+  </div>
+</div></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCover(pk) {
+  const body = document.getElementById('cl-' + pk);
+  const icon = document.getElementById('cl-icon-' + pk);
+  const text = document.getElementById('cl-text-' + pk);
+  const expanded = body.classList.toggle('expanded');
+  icon.className = expanded ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+  text.textContent = expanded ? 'Show less' : 'Read full cover letter';
+}
+// On page load, only show toggle if content actually overflows
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.cover-body').forEach(function(el) {
+    const pk = el.id.replace('cl-', '');
+    const btn = document.getElementById('cl-btn-' + pk);
+    if (!btn) return;
+    // If scrollHeight equals/less than collapsed height, no need for toggle
+    if (el.scrollHeight <= 100) {
+      btn.style.display = 'none';
+      el.style.maxHeight = 'none';
+    }
+  });
+});
+</script>
+{% endblock %}

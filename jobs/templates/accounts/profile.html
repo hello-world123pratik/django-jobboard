@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.user.username }}'s Profile — JobBoard{% endblock %}
+{% block extra_head %}
+<style>
+.profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; }
+@media(max-width:768px){ .profile-layout { grid-template-columns: 1fr; } }
+.profile-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; position: sticky; top: 86px; }
+.profile-hero { background: var(--navy); padding: 30px 22px; text-align: center; }
+.profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; margin: 0 auto 14px; border: 3px solid rgba(255,255,255,0.2); }
+.profile-name { color: #fff; font-size: 1.15rem; font-weight: 700; margin-bottom: 3px; }
+.profile-email { color: rgba(255,255,255,0.5); font-size: 0.83rem; margin-bottom: 12px; }
+.profile-role-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(240,90,40,0.2); color: #f9956a; padding: 4px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 700; border: 1px solid rgba(240,90,40,0.3); }
+.profile-stats { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.08); }
+.ps-item { padding: 14px 10px; text-align: center; }
+.ps-item:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
+.ps-val { color: #fff; font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; }
+.ps-label { color: rgba(255,255,255,0.4); font-size: 0.73rem; }
+.profile-detail-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.profile-detail-row:last-child { border-bottom: none; }
+.pdr-icon { color: var(--accent); font-size: 0.95rem; flex-shrink: 0; margin-top: 2px; }
+.pdr-content { min-width: 0; }
+.pdr-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.pdr-value { font-size: 0.87rem; color: var(--text); font-weight: 500; }
+.section-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 18px; }
+.sc-header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--light); display: flex; align-items: center; justify-content: space-between; }
+.sc-title { font-size: 0.87rem; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 7px; }
+.sc-body { padding: 18px 20px; }
+.skill-tag { display: inline-flex; align-items: center; background: rgba(240,90,40,0.09); color: #c13d10; border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600; margin: 3px 4px 3px 0; }
+.content-text { font-size: 0.9rem; color: #475569; line-height: 1.75; white-space: pre-wrap; }
+.empty-field { font-size: 0.87rem; color: var(--muted); font-style: italic; }
+/* Employer-specific stat cards */
+.emp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.emp-stat { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 16px; text-align: center; }
+.emp-stat-val { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--navy); }
+.emp-stat-label { font-size: 0.76rem; color: var(--muted); margin-top: 3px; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if is_own %}My Profile{% else %}{{ profile.user.username }}'s Profile{% endif %}</h1>
+    <p class="page-sub">
+      {% if profile.role == 'employer' %}Employer account
+      {% elif is_admin_user %}Administrator account
+      {% else %}Professional profile and information
+      {% endif %}
+    </p>
+  </div>
+  {% if is_own %}
+  <a href="{% url 'edit_profile' %}" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Edit Profile</a>
+  {% endif %}
+</div>
+
+<div class="profile-layout">
+  <!-- Sidebar -->
+  <div>
+    <div class="profile-card">
+      <div class="profile-hero">
+        <div class="profile-avatar">{{ profile.user.username|first|upper }}</div>
+        <div class="profile-name">{{ profile.user.username }}</div>
+        <div class="profile-email">{{ profile.user.email }}</div>
+        <span class="profile-role-badge">
+          {% if is_admin_user %}<i class="bi bi-shield-fill"></i> Administrator
+          {% elif profile.role == 'employer' %}<i class="bi bi-building"></i> Employer
+          {% else %}<i class="bi bi-person-badge"></i> Job Seeker
+          {% endif %}
+        </span>
+
+        {% if is_own and profile.is_job_seeker and recent_applications is not None %}
+        <div class="profile-stats">
+          <div class="ps-item">
+            <div class="ps-val">{{ recent_applications|length }}</div>
+            <div class="ps-label">Applications</div>
+          </div>
+          <div class="ps-item">
+            <div class="ps-val">{% if profile.resume %}1{% else %}0{% endif %}</div>
+            <div class="ps-label">Resumes</div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if is_own and profile.is_employer %}
+        <div class="profile-stats">
+          <div class="ps-item">
+            <div class="ps-val">{{ employer_job_count }}</div>
+            <div class="ps-label">Jobs Posted</div>
+          </div>
+          <div class="ps-item">
+            <div class="ps-val">{{ employer_app_count }}</div>
+            <div class="ps-label">Applicants</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Contact details -->
+      {% if profile.phone or profile.location or profile.website %}
+      <div>
+        {% if profile.phone %}
+        <div class="profile-detail-row">
+          <i class="bi bi-telephone pdr-icon"></i>
+          <div class="pdr-content"><div class="pdr-label">Phone</div><div class="pdr-value">{{ profile.phone }}</div></div>
+        </div>
+        {% endif %}
+        {% if profile.location %}
+        <div class="profile-detail-row">
+          <i class="bi bi-geo-alt pdr-icon"></i>
+          <div class="pdr-content"><div class="pdr-label">Location</div><div class="pdr-value">{{ profile.location }}</div></div>
+        </div>
+        {% endif %}
+        {% if profile.website %}
+        <div class="profile-detail-row">
+          <i class="bi bi-globe pdr-icon"></i>
+          <div class="pdr-content"><div class="pdr-label">Website</div><div class="pdr-value"><a href="{{ profile.website }}" target="_blank">{{ profile.website|truncatechars:28 }}</a></div></div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if not is_admin_user and profile.is_job_seeker %}
+      <div class="profile-detail-row">
+        <i class="bi bi-file-earmark-person pdr-icon"></i>
+        <div class="pdr-content">
+          <div class="pdr-label">Resume</div>
+          <div class="pdr-value">
+            {% if profile.resume %}
+            <a href="{{ profile.resume.url }}" target="_blank" class="btn btn-ghost btn-sm" style="padding:3px 10px;"><i class="bi bi-download"></i> Download</a>
+            {% else %}
+            <span class="empty-field">Not uploaded</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── RIGHT COLUMN: content varies by role ── -->
+  <div>
+
+    {% if is_admin_user %}
+    <!-- ── ADMIN PROFILE ── -->
+    <div class="section-card">
+      <div class="sc-header"><span class="sc-title"><i class="bi bi-shield-check"></i> Administrator Account</span></div>
+      <div class="sc-body">
+        <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;margin-bottom:20px;">
+          This is a superuser / administrator account with full access to the Django admin panel and the custom admin dashboard.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="{% url 'admin_dashboard' %}" class="btn btn-navy"><i class="bi bi-speedometer2"></i> Admin Panel</a>
+          <a href="/admin/" target="_blank" class="btn btn-ghost"><i class="bi bi-gear"></i> Django Admin</a>
+        </div>
+      </div>
+    </div>
+    {% if profile.bio %}
+    <div class="section-card">
+      <div class="sc-header"><span class="sc-title"><i class="bi bi-person-lines-fill"></i> About</span></div>
+      <div class="sc-body"><p class="content-text">{{ profile.bio }}</p></div>
+    </div>
+    {% endif %}
+
+    {% elif profile.is_employer %}
+    <!-- ── EMPLOYER PROFILE ── -->
+    {% if is_own %}
+    <div class="emp-stats">
+      <div class="emp-stat">
+        <div class="emp-stat-val">{{ employer_job_count }}</div>
+        <div class="emp-stat-label">Jobs Posted</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-stat-val">{{ employer_app_count }}</div>
+        <div class="emp-stat-label">Total Applicants</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if profile.bio %}
+    <div class="section-card">
+      <div class="sc-header"><span class="sc-title"><i class="bi bi-person-lines-fill"></i> About</span></div>
+      <div class="sc-body"><p class="content-text">{{ profile.bio }}</p></div>
+    </div>
+    {% endif %}
+
+    {% if is_own %}
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title"><i class="bi bi-briefcase"></i> My Job Listings</span>
+        <a href="{% url 'employer_jobs' %}" class="btn btn-ghost btn-sm">Manage All</a>
+      </div>
+      <div class="sc-body" style="padding: 8px 16px;">
+        {% if employer_recent_jobs %}
+          {% for job in employer_recent_jobs %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+            <div style="width:34px;height:34px;border-radius:7px;background:var(--navy);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:0.85rem;flex-shrink:0;">{{ job.company_name|first|upper }}</div>
+            <div style="flex:1;min-width:0;">
+              <a href="{% url 'job_detail' job.pk %}" style="font-weight:600;font-size:0.88rem;color:var(--navy);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ job.title }}</a>
+              <span style="font-size:0.75rem;color:var(--muted);">{{ job.location }} · {{ job.job_type }}</span>
+            </div>
+            {% if job.is_approved %}
+            <span class="badge badge-green">Live</span>
+            {% else %}
+            <span class="badge badge-yellow">Pending</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="empty-field" style="padding:12px 0;">No jobs posted yet. <a href="{% url 'job_create' %}">Post one →</a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="{% url 'job_create' %}" class="btn btn-success"><i class="bi bi-plus-circle"></i> Post New Job</a>
+      <a href="{% url 'employer_applications' %}" class="btn btn-ghost"><i class="bi bi-inbox"></i> View Applications</a>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- ── JOB SEEKER PROFILE ── -->
+    {% if profile.bio %}
+    <div class="section-card">
+      <div class="sc-header"><span class="sc-title"><i class="bi bi-person-lines-fill"></i> About</span></div>
+      <div class="sc-body"><p class="content-text">{{ profile.bio }}</p></div>
+    </div>
+    {% endif %}
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title"><i class="bi bi-tools"></i> Skills</span>
+        {% if is_own and not profile.skills %}<a href="{% url 'edit_profile' %}" class="btn btn-ghost btn-sm"><i class="bi bi-plus"></i> Add</a>{% endif %}
+      </div>
+      <div class="sc-body">
+        {% if profile.skills %}
+          {% for skill in profile.get_skills_list %}
+          <span class="skill-tag">{{ skill }}</span>
+          {% empty %}
+          <span class="skill-tag">{{ profile.skills }}</span>
+          {% endfor %}
+        {% else %}
+          <p class="empty-field">No skills listed yet.{% if is_own %} <a href="{% url 'edit_profile' %}">Add skills →</a>{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title"><i class="bi bi-mortarboard"></i> Education</span>
+        {% if is_own and not profile.education %}<a href="{% url 'edit_profile' %}" class="btn btn-ghost btn-sm"><i class="bi bi-plus"></i> Add</a>{% endif %}
+      </div>
+      <div class="sc-body">
+        {% if profile.education %}
+        <div class="content-text">{{ profile.education }}</div>
+        {% else %}
+        <p class="empty-field">No education history added.{% if is_own %} <a href="{% url 'edit_profile' %}">Add education →</a>{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title"><i class="bi bi-briefcase"></i> Work Experience</span>
+        {% if is_own and not profile.experience %}<a href="{% url 'edit_profile' %}" class="btn btn-ghost btn-sm"><i class="bi bi-plus"></i> Add</a>{% endif %}
+      </div>
+      <div class="sc-body">
+        {% if profile.experience %}
+        <div class="content-text">{{ profile.experience }}</div>
+        {% else %}
+        <p class="empty-field">No experience listed.{% if is_own %} <a href="{% url 'edit_profile' %}">Add experience →</a>{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if is_own and recent_applications %}
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title"><i class="bi bi-send-check"></i> Recent Applications</span>
+        <a href="{% url 'applied_jobs' %}" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <div class="sc-body" style="padding:8px 16px;">
+        {% for app in recent_applications %}
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="width:34px;height:34px;border-radius:7px;background:var(--navy);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:0.85rem;flex-shrink:0;">{{ app.job.company_name|first|upper }}</div>
+          <div style="flex:1;min-width:0;">
+            <a href="{% url 'job_detail' app.job.pk %}" style="font-weight:600;font-size:0.88rem;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">{{ app.job.title }}</a>
+            <span style="font-size:0.75rem;color:var(--muted);">{{ app.job.company_name }}</span>
+          </div>
+          <span class="badge {% if app.status == 'shortlisted' %}badge-green{% elif app.status == 'rejected' %}badge-red{% elif app.status == 'reviewed' %}badge-blue{% else %}badge-yellow{% endif %}">{{ app.get_status_display }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
