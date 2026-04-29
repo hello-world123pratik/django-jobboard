@@ -1,31 +1,31 @@
-# 🧳 JobBoard — Full-Stack Django Job Portal
+# JobBoard — Full-Stack Django Job Portal
 
 > A complete, production-grade job portal built with Django. Supports job seekers, employers, and administrators with dedicated dashboards, real-time application tracking, and a professional UI.
 
 ---
 
-## ✨ Features
+## Features
 
-### 👤 Job Seekers
+### Job Seekers
 - Browse & search jobs by title, location, type, and category
 - Apply with resume upload + cover letter
 - Track application status (Pending → Reviewed → Shortlisted / Rejected)
 - Complete profile with skills, education, experience, and portfolio link
 
-### 🏢 Employers
+### Employers
 - Post and manage job listings
 - View all incoming applications per listing
 - Update application status with one click
 - Separate employer dashboard
 
-### 🔐 Admins / Moderators
+### Admins / Moderators
 - Approve or reject job listings before they go live
 - Full Django admin panel with rich UI (search, filters, bulk actions)
 - View all users, jobs, and applications with inline editing
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -38,7 +38,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone & Set Up Environment
 ```bash
@@ -82,7 +82,7 @@ Open **http://127.0.0.1:8000/** in your browser.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 jobboard/
@@ -139,7 +139,7 @@ jobboard/
 
 ---
 
-## 🔗 URL Reference
+## URL Reference
 
 | URL | Name | Access |
 |---|---|---|
@@ -164,7 +164,7 @@ jobboard/
 
 ---
 
-## 👥 User Roles
+## User Roles
 
 | Role | How to get it | Capabilities |
 |---|---|---|
@@ -174,7 +174,7 @@ jobboard/
 
 ---
 
-## 🗄 Data Models
+## Data Models
 
 ### `Profile` (extends User)
 | Field | Type | Description |
@@ -217,7 +217,7 @@ Simple model with `name` field. Jobs are grouped by category.
 
 ---
 
-## 🚢 Deployment (Render / Railway / Fly.io)
+## Deployment (Render / Railway / Fly.io)
 
 1. Set environment variables:
    ```
@@ -240,7 +240,7 @@ Simple model with `name` field. Jobs are grouped by category.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repo
 2. Create a branch: `git checkout -b feature/your-feature`
@@ -250,12 +250,10 @@ Simple model with `name` field. Jobs are grouped by category.
 
 ---
 
-## 📄 License
+## License
 
 MIT License — free to use, modify, and distribute.
 
 ---
 
-<div align="center">
-  Built with ❤️ using <strong>Django 5.2</strong> · Python · SQLite
-</div>
+
