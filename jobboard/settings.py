@@ -4,20 +4,19 @@ Django settings for jobboard project.
 from pathlib import Path
 import os
 import dj_database_url
+from django.contrib.auth import get_user_model
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ─── SECURITY ─────────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-qh4z2gtoi_z2d!r&=sppt0bj$#ofj90v7xo$164#yw^@0%yts@'
-)
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Use ONLY environment variable (no fallback)
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
-ALLOWED_HOSTS = os.environ.get(
-    'ALLOWED_HOSTS',
-    'localhost,127.0.0.1,.onrender.com'
-).split(',')
+# Debug controlled via environment
+DEBUG = os.environ.get('DEBUG') == 'True'
+
+# Allowed hosts from environment
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # ─── APPS ─────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -115,7 +114,6 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
 ]
 
-
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
@@ -126,5 +124,24 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# WhiteNoise for static files
+# ─── STATIC FILES STORAGE (WhiteNoise) ────────────────────────────────────────
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ─── RENDER FIX (HTTPS PROXY) ─────────────────────────────────────────────────
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ─── AUTO SUPERUSER (SECURE - ENV BASED) ──────────────────────────────────────
+User = get_user_model()
+
+if os.environ.get("RENDER") == "true":
+    username = os.environ.get("DJANGO_SUPERUSER_USERNAME")
+    email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+    password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+
+    if username and password:
+        if not User.objects.filter(username=username).exists():
+            User.objects.create_superuser(
+                username=username,
+                email=email,
+                password=password
+            )
