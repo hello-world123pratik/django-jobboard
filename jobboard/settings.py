@@ -8,13 +8,10 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ─── SECURITY ─────────────────────────────────────────────────────────────────
-# Use ONLY environment variable (no fallback)
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
-# Debug controlled via environment
 DEBUG = os.environ.get('DEBUG') == 'True'
 
-# Allowed hosts from environment
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # ─── APPS ─────────────────────────────────────────────────────────────────────
@@ -25,6 +22,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Cloudinary (ADDED)
+    'cloudinary',
+    'cloudinary_storage',
+
     'jobs',
 ]
 
@@ -91,6 +93,9 @@ STATICFILES_DIRS = []
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# 👉 Cloudinary storage for media files (VERY IMPORTANT)
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 # ─── AUTH REDIRECTS ───────────────────────────────────────────────────────────
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
@@ -128,4 +133,3 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ─── RENDER FIX (HTTPS PROXY) ─────────────────────────────────────────────────
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
